@@ -1,85 +1,109 @@
-// server.js
-
-const Plant = require("./src/models/Plant");
-
+const RawMaterialYard = require("./src/zones/RawMaterialYard");
+const CokeOven = require("./src/zones/CokeOven");
 const BlastFurnace = require("./src/zones/BlastFurnace");
+const SMS = require("./src/zones/SMS");
+const RollingMill = require("./src/zones/RollingMill");
 
-const ScenarioManager = require("./src/simulator/ScenarioManager");
+const rawMaterial = new RawMaterialYard();
+const cokeOven = new CokeOven();
+const blastFurnace = new BlastFurnace();
+const sms = new SMS();
+const rollingMill = new RollingMill();
 
-const DigitalTwinEngine = require("./src/simulator/DigitalTwinEngine");
+const context = {
 
-// ===========================================
-// Create Plant
-// ===========================================
+    plantState: {
 
-const plant = new Plant({
+        operatingMode: "NORMAL"
 
-    id: "steel_guardian",
+    },
 
-    name: "SteelGuardian AI",
+    utilities: {
 
-    description: "Industrial Digital Twin"
+        powerAvailability: 1,
 
-});
+        waterAvailability: 1
 
-// ===========================================
-// Add Zones
-// ===========================================
+    },
 
-plant.addZone(new BlastFurnace());
+    dataBus: {}
 
-// ===========================================
-// Scenario Manager
-// ===========================================
+};
 
-const scenarioManager = new ScenarioManager();
+for (let cycle = 0; cycle <= 200; cycle++) {
 
-// ===========================================
-// Digital Twin
-// ===========================================
+    rawMaterial.update({
 
-const digitalTwin = new DigitalTwinEngine(
+        context,
 
-    plant,
+        scenario: "NORMAL"
 
-    scenarioManager
+    });
 
-);
+    cokeOven.update({
 
-// ===========================================
-// Start Simulation
-// ===========================================
+        context,
 
-digitalTwin.start();
+        scenario: "NORMAL"
 
-// ===========================================
-// Debug Output
-// ===========================================
+    });
 
-setInterval(() => {
+    blastFurnace.update({
 
-    console.clear();
+        context,
 
-    console.log("========================================");
-    console.log("SteelGuardian AI Digital Twin");
-    console.log("========================================");
+        scenario: "NORMAL"
 
-    console.log("Scenario :", scenarioManager.getCurrentScenario());
+    });
 
-    console.log("");
+    sms.update({
 
-    console.log(
+        context,
 
-        JSON.stringify(
+        scenario: "NORMAL"
 
-            plant.toJSON(),
+    });
 
-            null,
+    rollingMill.update({
 
-            2
+        context,
 
-        )
+        scenario: "NORMAL"
 
-    );
+    });
 
-},2000);
+    if (cycle % 25 === 0) {
+
+        console.clear();
+
+        console.log("\n==============================================");
+        console.log("PLANT STATUS");
+        console.log("Cycle :", cycle);
+        console.log("==============================================\n");
+
+        console.log("RAW MATERIAL YARD");
+        console.dir(rawMaterial.publishData(), { depth: null });
+
+        console.log("\n----------------------------------------------\n");
+
+        console.log("COKE OVEN");
+        console.dir(cokeOven.publishData(), { depth: null });
+
+        console.log("\n----------------------------------------------\n");
+
+        console.log("BLAST FURNACE");
+        console.dir(blastFurnace.publishData(), { depth: null });
+
+        console.log("\n----------------------------------------------\n");
+
+        console.log("SMS");
+        console.dir(sms.publishData(), { depth: null });
+
+        console.log("\n----------------------------------------------\n");
+
+        console.log("ROLLING MILL");
+        console.dir(rollingMill.publishData(), { depth: null });
+
+    }
+
+}

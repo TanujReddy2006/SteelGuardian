@@ -1,5 +1,3 @@
-// src/zones/BlastFurnace.js
-
 const Zone = require("../models/Zone");
 const Sensor = require("../models/Sensor");
 
@@ -8,29 +6,61 @@ class BlastFurnace extends Zone {
     constructor() {
 
         super({
+
             id: "blast_furnace",
+
             name: "Blast Furnace",
+
             priority: 10,
-            description: "Converts iron ore into molten iron."
+
+            description: "Converts iron ore into molten iron using coke and hot air."
+
         });
 
-        this.initializeSensors();
         // =====================================================
-// Process State
-// =====================================================
-this.processState = {
+        // Process State
+        // =====================================================
 
-    targetTemperature: 1515,
+        this.processState = {
 
-    combustionRate: 1.0,
+            // Operating
+            operatingMode: "NORMAL",
 
-    coolingEfficiency: 1.0,
+            // Furnace Process
+            targetTemperature: 1515,
+            combustionRate: 1.0,
+            blastAirFlow: 1.0,
+            oxygenEnrichment: 0.95,
+            burdenQuality: 0.96,
 
-    productionRate: 1.0,
+            // Cooling
+            coolingEfficiency: 1.0,
 
-    furnaceEfficiency: 0.95
+            // Production
+            productionRate: 1.0,
+            furnaceEfficiency: 0.95,
+            thermalEfficiency: 0.93,
 
-};
+            // Outputs
+            hotMetalProduction: 0,
+            slagProduction: 0,
+            topGasGeneration: 0,
+
+            // Consumption
+            cokeConsumption: 0,
+            energyConsumption: 0,
+
+            // Equipment
+            furnaceHealth: 0.98,
+
+            // Internal Physics
+            heatBalance: 1.0,
+
+            lastUpdate: new Date()
+
+        };
+
+        this.initializeSensors();
 
     }
 
@@ -41,19 +71,25 @@ this.processState = {
     initializeSensors() {
 
         // Furnace Temperature
+
         this.addSensor(new Sensor({
 
             id: "BF_TEMP_001",
+
             name: "Furnace Temperature",
+
             type: "temperature",
+
             zone: this.id,
 
             unit: "°C",
 
             minValue: 1450,
+
             maxValue: 1600,
 
             warningHigh: 1570,
+
             criticalHigh: 1590,
 
             initialValue: 1500,
@@ -63,19 +99,25 @@ this.processState = {
         }));
 
         // Furnace Pressure
+
         this.addSensor(new Sensor({
 
             id: "BF_PRESS_001",
+
             name: "Furnace Pressure",
+
             type: "pressure",
+
             zone: this.id,
 
             unit: "bar",
 
             minValue: 7,
+
             maxValue: 9,
 
             warningHigh: 8.6,
+
             criticalHigh: 8.9,
 
             initialValue: 8,
@@ -85,19 +127,25 @@ this.processState = {
         }));
 
         // CO Gas
+
         this.addSensor(new Sensor({
 
             id: "BF_CO_001",
+
             name: "CO Gas",
+
             type: "gas",
+
             zone: this.id,
 
             unit: "ppm",
 
             minValue: 20,
+
             maxValue: 45,
 
             warningHigh: 38,
+
             criticalHigh: 42,
 
             initialValue: 30,
@@ -106,20 +154,26 @@ this.processState = {
 
         }));
 
-        // Cooling Water Flow
+        // Cooling Water
+
         this.addSensor(new Sensor({
 
             id: "BF_COOL_001",
+
             name: "Cooling Water Flow",
+
             type: "flow",
+
             zone: this.id,
 
             unit: "%",
 
             minValue: 80,
+
             maxValue: 100,
 
             warningLow: 85,
+
             criticalLow: 82,
 
             initialValue: 95,
@@ -129,19 +183,25 @@ this.processState = {
         }));
 
         // Top Gas Pressure
+
         this.addSensor(new Sensor({
 
             id: "BF_TOP_001",
+
             name: "Top Gas Pressure",
+
             type: "pressure",
+
             zone: this.id,
 
             unit: "bar",
 
             minValue: 3,
+
             maxValue: 5,
 
             warningHigh: 4.6,
+
             criticalHigh: 4.9,
 
             initialValue: 4,
@@ -151,19 +211,25 @@ this.processState = {
         }));
 
         // Vibration
+
         this.addSensor(new Sensor({
 
             id: "BF_VIB_001",
+
             name: "Vibration",
+
             type: "vibration",
+
             zone: this.id,
 
             unit: "mm/s",
 
             minValue: 1,
+
             maxValue: 4,
 
             warningHigh: 3,
+
             criticalHigh: 3.5,
 
             initialValue: 2,
@@ -175,7 +241,7 @@ this.processState = {
     }
 
     // =====================================================
-    // Utility
+    // Helpers
     // =====================================================
 
     random(min, max) {
@@ -184,273 +250,691 @@ this.processState = {
 
     }
 
-    // =====================================================
-    // Update
-    // =====================================================
+    // Uses getSensor() from Zone.js
+    getSensor(id) {
 
-    update(currentScenario) {
-
-    this.updateProcessState(currentScenario);
-
-    switch (currentScenario) {
-
-        case "COOLING_FAILURE":
-            this.updateCoolingFailure();
-            break;
-
-        default:
-            this.updateNormal();
-            break;
+        return this.sensors.find(sensor => sensor.id === id);
 
     }
 
-    super.update();
-
-}
-
     // =====================================================
-    // Normal Operation
+    // Operating Modes
     // =====================================================
 
-   updateNormal() {
+    updateProcessState(mode) {
 
-    const temp = this.getSensorById("BF_TEMP_001");
-    const pressure = this.getSensorById("BF_PRESS_001");
-    const co = this.getSensorById("BF_CO_001");
-    const cooling = this.getSensorById("BF_COOL_001");
-    const topGas = this.getSensorById("BF_TOP_001");
-    const vibration = this.getSensorById("BF_VIB_001");
+        this.processState.operatingMode = mode;
 
-    // ===========================================
-    // Slowly changing process variables
-    // ===========================================
+        switch (mode) {
 
-    this.processState.combustionRate += this.random(-0.005, 0.005);
+            case "STARTUP":
 
-    this.processState.coolingEfficiency += this.random(-0.002, 0.002);
+                this.processState.targetTemperature = 1450;
+                this.processState.productionRate = 0.45;
+                this.processState.combustionRate = 0.55;
+                break;
 
-    this.processState.productionRate += this.random(-0.003, 0.003);
+            case "NORMAL":
 
-    this.processState.furnaceEfficiency += this.random(-0.001, 0.001);
+                this.processState.targetTemperature = 1515;
+                this.processState.productionRate = 1.0;
+                this.processState.combustionRate = 1.0;
+                break;
 
-    // Clamp process values
+            case "HIGH_PRODUCTION":
 
-    this.processState.combustionRate =
-        Math.max(0.9, Math.min(1.1, this.processState.combustionRate));
+                this.processState.targetTemperature = 1545;
+                this.processState.productionRate = 1.15;
+                this.processState.combustionRate = 1.10;
+                break;
 
-    this.processState.coolingEfficiency =
-        Math.max(0.9, Math.min(1.0, this.processState.coolingEfficiency));
+            case "LOW_PRODUCTION":
 
-    this.processState.productionRate =
-        Math.max(0.9, Math.min(1.1, this.processState.productionRate));
+                this.processState.targetTemperature = 1485;
+                this.processState.productionRate = 0.75;
+                this.processState.combustionRate = 0.80;
+                break;
 
-    this.processState.furnaceEfficiency =
-        Math.max(0.90, Math.min(0.98, this.processState.furnaceEfficiency));
+            case "MAINTENANCE":
 
-    // ===========================================
-    // Cooling Water
-    // ===========================================
+                this.processState.targetTemperature = 1200;
+                this.processState.productionRate = 0.20;
+                this.processState.combustionRate = 0.30;
+                break;
 
-    const coolingValue = Math.max(
-        80,
-        Math.min(
-            100,
-            95 * this.processState.coolingEfficiency +
-            this.random(-0.2, 0.2)
-        )
-    );
+            case "SHUTDOWN":
 
-    cooling.updateValue(coolingValue);
+                this.processState.targetTemperature = 500;
+                this.processState.productionRate = 0;
+                this.processState.combustionRate = 0;
+                break;
 
-    // ===========================================
-    // Furnace Temperature
-    // ===========================================
+        }
 
-    const heatGeneration =
-        20 * this.processState.combustionRate;
+    }
+        // =====================================================
+    // Normal Blast Furnace Process
+    // =====================================================
 
-    const coolingLoss =
-        (100 - coolingValue) * 2;
+    updateNormal() {
 
-    const targetTemp =
-        this.processState.targetTemperature +
-        heatGeneration -
-        coolingLoss;
+        const temp = this.getSensor("BF_TEMP_001");
+        const pressure = this.getSensor("BF_PRESS_001");
+        const co = this.getSensor("BF_CO_001");
+        const cooling = this.getSensor("BF_COOL_001");
+        const topGas = this.getSensor("BF_TOP_001");
+        const vibration = this.getSensor("BF_VIB_001");
 
-    const temperatureValue =
-        temp.currentValue +
-        (targetTemp - temp.currentValue) * 0.08 +
-        this.random(-0.3, 0.3);
+        // ===============================================
+        // Plant Context (Future Cross-Zone Integration)
+        // ===============================================
 
-    temp.updateValue(temperatureValue);
+        const utilities = this.context?.utilities || {};
 
-    // ===========================================
-    // Pressure
-    // ===========================================
+        const powerAvailability =
+            utilities.powerAvailability ?? 1;
 
-    const pressureTarget =
-        8 +
-        (temperatureValue - 1500) * 0.01 +
-        (this.processState.productionRate - 1) * 0.2;
+        const waterAvailability =
+            utilities.waterAvailability ?? 1;
 
-    pressure.updateValue(
+        // ===============================================
+        // Slow Equipment Degradation
+        // ===============================================
 
-        pressure.currentValue +
+        this.processState.furnaceHealth +=
+            this.random(-0.0002, 0.0002);
 
-        (pressureTarget - pressure.currentValue) * 0.15 +
+        this.processState.coolingEfficiency +=
+            this.random(-0.001, 0.001);
 
-        this.random(-0.01, 0.01)
+        this.processState.burdenQuality +=
+            this.random(-0.0005, 0.0005);
 
-    );
+        this.processState.furnaceEfficiency +=
+            this.random(-0.0004, 0.0004);
 
-    // ===========================================
-    // CO Gas
-    // ===========================================
+        this.processState.furnaceHealth =
+            Math.max(0.90,
+            Math.min(1.00,
+            this.processState.furnaceHealth));
 
-    const coTarget =
+        this.processState.coolingEfficiency =
+            Math.max(0.85,
+            Math.min(1.00,
+            this.processState.coolingEfficiency));
 
-        30 +
+        this.processState.burdenQuality =
+            Math.max(0.85,
+            Math.min(1.00,
+            this.processState.burdenQuality));
 
-        (temperatureValue - 1500) * 0.12 +
+        this.processState.furnaceEfficiency =
+            Math.max(0.90,
+            Math.min(0.99,
+            this.processState.furnaceEfficiency));
 
-        (pressure.currentValue - 8) * 4;
+        // ===============================================
+        // Blast Air Flow
+        // ===============================================
 
-    co.updateValue(
+        this.processState.blastAirFlow +=
 
-        co.currentValue +
+            (this.processState.productionRate -
 
-        (coTarget - co.currentValue) * 0.12 +
+            this.processState.blastAirFlow) * 0.05;
 
-        this.random(-0.2, 0.2)
+        // ===============================================
+        // Heat Balance
+        // ===============================================
 
-    );
+        this.processState.heatBalance =
 
-    // ===========================================
-    // Top Gas Pressure
-    // ===========================================
+            this.processState.combustionRate *
 
-    const topGasTarget =
+            this.processState.blastAirFlow *
 
-        4 +
+            this.processState.burdenQuality *
 
-        (pressure.currentValue - 8) * 0.15;
+            powerAvailability;
 
-    topGas.updateValue(
+        // ===============================================
+        // Cooling Water
+        // ===============================================
 
-        topGas.currentValue +
+        const coolingTarget =
 
-        (topGasTarget - topGas.currentValue) * 0.2 +
+            95 *
 
-        this.random(-0.01, 0.01)
+            this.processState.coolingEfficiency *
 
-    );
+            waterAvailability;
 
-    // ===========================================
-    // Vibration
-    // ===========================================
+        cooling.updateValue(
 
-    const vibrationTarget =
+            cooling.currentValue +
 
-        2 +
+            (coolingTarget -
 
-        (pressure.currentValue - 8) * 0.3 +
+            cooling.currentValue) * 0.10 +
 
-        (temperatureValue - 1500) * 0.003;
+            this.random(-0.20, 0.20)
 
-    vibration.updateValue(
+        );
 
-        vibration.currentValue +
+        // ===============================================
+        // Furnace Temperature
+        // ===============================================
 
-        (vibrationTarget - vibration.currentValue) * 0.15 +
+     const coolingLoss = Math.max(0, 95 - cooling.currentValue);
 
-        this.random(-0.01, 0.01)
+    const targetTemperature =
 
-    );
+    this.processState.targetTemperature +
 
-}
-updateCoolingFailure() {
+    (this.processState.heatBalance * 45) +
 
-    const temp = this.getSensorById("BF_TEMP_001");
-    const pressure = this.getSensorById("BF_PRESS_001");
-    const co = this.getSensorById("BF_CO_001");
-    const cooling = this.getSensorById("BF_COOL_001");
-    const topGas = this.getSensorById("BF_TOP_001");
-    const vibration = this.getSensorById("BF_VIB_001");
+    (coolingLoss * 2.5) +
 
-    // Cooling system degrades continuously
+    ((1 - this.processState.furnaceHealth) * 15);
 
-    this.processState.coolingEfficiency -= 0.015;
+        temp.updateValue(
 
-    this.processState.coolingEfficiency =
+            temp.currentValue +
 
-        Math.max(0.55, this.processState.coolingEfficiency);
+            (targetTemperature -
 
-    // Production slows down
+            temp.currentValue) * 0.08 +
 
-    this.processState.productionRate -= 0.002;
+            this.random(-0.25, 0.25)
 
-    this.processState.productionRate =
+        );
 
-        Math.max(0.85, this.processState.productionRate);
+        // ===============================================
+        // Furnace Pressure
+        // ===============================================
 
-    // Reuse normal model
+        const coolingStress = Math.max(0,95-cooling.currentValue);
 
-    this.updateNormal();
+const pressureTarget =
 
-}
-updateProcessState(mode) {
+    7.8 +
 
-    switch (mode) {
+    (temp.currentValue-1500)*0.012 +
 
-        case "STARTUP":
+    this.processState.productionRate*0.25 +
 
-            this.processState.targetTemperature = 1450;
-            this.processState.productionRate = 0.4;
-            this.processState.combustionRate = 0.6;
-            break;
+    coolingStress*0.025;
 
-        case "NORMAL":
+        pressure.updateValue(
 
-            this.processState.targetTemperature = 1515;
-            this.processState.productionRate = 1.0;
-            this.processState.combustionRate = 1.0;
-            break;
+            pressure.currentValue +
 
-        case "HIGH_PRODUCTION":
+            (pressureTarget -
 
-            this.processState.targetTemperature = 1545;
-            this.processState.productionRate = 1.2;
-            this.processState.combustionRate = 1.15;
-            break;
+            pressure.currentValue) * 0.10 +
 
-        case "LOW_PRODUCTION":
+            this.random(-0.01, 0.01)
 
-            this.processState.targetTemperature = 1485;
-            this.processState.productionRate = 0.75;
-            this.processState.combustionRate = 0.8;
-            break;
+        );
 
-        case "MAINTENANCE":
+        // ===============================================
+        // CO Generation
+        // ===============================================
 
-            this.processState.targetTemperature = 1200;
-            this.processState.productionRate = 0.2;
-            this.processState.combustionRate = 0.3;
-            break;
+        
 
-        case "SHUTDOWN":
+const coTarget =
 
-            this.processState.targetTemperature = 500;
-            this.processState.productionRate = 0;
-            this.processState.combustionRate = 0;
-            break;
+    28 +
 
-        default:
+    (this.processState.combustionRate*6) +
 
-            break;
+    (pressure.currentValue-8)*4 +
+
+    coolingStress*0.4;
+
+        co.updateValue(
+
+            co.currentValue +
+
+            (coTarget -
+
+            co.currentValue) * 0.10 +
+
+            this.random(-0.15, 0.15)
+
+        );
+
+        // ===============================================
+        // Top Gas
+        // ===============================================
+
+        const topGasTarget =
+
+            4 +
+
+            (pressure.currentValue - 8) * 0.18;
+
+        topGas.updateValue(
+
+            topGas.currentValue +
+
+            (topGasTarget -
+
+            topGas.currentValue) * 0.12 +
+
+            this.random(-0.01, 0.01)
+
+        );
+
+        // ===============================================
+        // Furnace Vibration
+        // ===============================================
+
+        
+
+const vibrationTarget =
+
+    1.8 +
+
+    (pressure.currentValue-8)*0.4 +
+
+    ((1-this.processState.furnaceHealth)*6) +
+
+    coolingStress*0.03;
+
+        vibration.updateValue(
+
+            vibration.currentValue +
+
+            (vibrationTarget -
+
+            vibration.currentValue) * 0.10 +
+
+            this.random(-0.02, 0.02)
+
+        );
+
+        // ===============================================
+        // Production Model
+        // ===============================================
+
+        const productionFactor =
+
+    (this.processState.coolingEfficiency*0.35)+
+
+    (this.processState.furnaceHealth*0.65);
+
+this.processState.hotMetalProduction =
+
+    this.processState.productionRate *
+
+    this.processState.furnaceEfficiency *
+
+    this.processState.burdenQuality *
+
+    productionFactor *
+
+    100;
+
+        this.processState.slagProduction =
+
+            this.processState.hotMetalProduction *
+
+            0.12;
+
+        this.processState.topGasGeneration =
+
+            this.processState.hotMetalProduction *
+
+            0.82;
+
+        this.processState.cokeConsumption =
+
+            this.processState.hotMetalProduction *
+
+            0.42;
+
+        this.processState.energyConsumption =
+
+            this.processState.hotMetalProduction *
+
+            0.21;
+
+        this.processState.thermalEfficiency =
+
+            this.processState.furnaceEfficiency *
+
+            this.processState.coolingEfficiency;
+
+        this.processState.lastUpdate = new Date();
+
+    }
+        // =====================================================
+    // Cooling Failure
+    // =====================================================
+
+    updateCoolingFailure() {
+
+        this.processState.coolingEfficiency -= 0.01;
+
+        this.processState.coolingEfficiency =
+            Math.max(0.60, this.processState.coolingEfficiency);
+
+        this.processState.coolingEfficiency-=0.003; ;
+
+        this.updateNormal();
 
     }
 
-}
+    // =====================================================
+    // Gas Leak
+    // =====================================================
+
+    updateGasLeak() {
+
+        const co = this.getSensor("BF_CO_001");
+
+        co.updateValue(
+
+            co.currentValue +
+
+            this.random(2, 4)
+
+        );
+
+        this.processState.topGasGeneration += 3;
+
+        this.updateNormal();
+
+    }
+
+    // =====================================================
+    // Pressure Rise
+    // =====================================================
+
+    updatePressureRise() {
+
+        const pressure = this.getSensor("BF_PRESS_001");
+
+        pressure.updateValue(
+
+            pressure.currentValue +
+
+            this.random(0.15, 0.25)
+
+        );
+
+        this.processState.combustionRate += 0.02;
+
+        this.updateNormal();
+
+    }
+
+    // =====================================================
+    // Furnace Fire
+    // =====================================================
+
+    updateFire() {
+
+        this.processState.combustionRate += 0.03;
+        this.processState.blastAirFlow+=0.015;
+
+this.processState.blastAirFlow=
+
+Math.min(
+
+1.2,
+
+this.processState.blastAirFlow
+
+);
+
+        this.processState.coolingEfficiency -= 0.02;
+
+        this.processState.furnaceHealth -= 0.002;
+
+        this.updateNormal();
+
+    }
+
+    // =====================================================
+    // Publish Industrial Data
+    // =====================================================
+
+    publishData() {
+
+        const temp = this.getSensor("BF_TEMP_001");
+        const pressure = this.getSensor("BF_PRESS_001");
+        const co = this.getSensor("BF_CO_001");
+        const cooling = this.getSensor("BF_COOL_001");
+        const vibration = this.getSensor("BF_VIB_001");
+
+        const alarms = [];
+
+        if (temp.status === "CRITICAL") {
+
+            alarms.push({
+
+                severity: "CRITICAL",
+
+                equipment: "Blast Furnace",
+
+                message: "Furnace temperature exceeds safe limit."
+
+            });
+
+        }
+
+        if (pressure.status === "CRITICAL") {
+
+            alarms.push({
+
+                severity: "CRITICAL",
+
+                equipment: "Blast Furnace",
+
+                message: "Blast furnace pressure is critically high."
+
+            });
+
+        }
+
+        if (cooling.status === "CRITICAL") {
+
+            alarms.push({
+
+                severity: "CRITICAL",
+
+                equipment: "Cooling System",
+
+                message: "Cooling water flow is critically low."
+
+            });
+
+        }
+
+        return {
+
+            production: {
+
+                hotMetalProduction:
+                    Number(this.processState.hotMetalProduction.toFixed(2)),
+
+                slagProduction:
+                    Number(this.processState.slagProduction.toFixed(2)),
+
+                topGasGeneration:
+                    Number(this.processState.topGasGeneration.toFixed(2)),
+
+                cokeConsumption:
+                    Number(this.processState.cokeConsumption.toFixed(2))
+
+            },
+
+            utilities: {
+
+                energyConsumption:
+                    Number(this.processState.energyConsumption.toFixed(2)),
+
+                coolingWater:
+                    Number(cooling.currentValue.toFixed(2))
+
+            },
+
+            emissions: {
+
+                co:
+                    Number(co.currentValue.toFixed(2)),
+
+                co2:
+                    Number((co.currentValue * 2.6).toFixed(2))
+
+            },
+
+            equipment: {
+
+                furnaceHealth:
+                    Number((this.processState.furnaceHealth * 100).toFixed(2)),
+
+                coolingEfficiency:
+                    Number((this.processState.coolingEfficiency * 100).toFixed(2)),
+
+                vibration:
+                    Number(vibration.currentValue.toFixed(2))
+
+            },
+
+            health: {
+
+                availability:
+                    Number((this.processState.furnaceHealth * 100).toFixed(2)),
+
+                performance:
+                    Number((this.processState.productionRate * 100).toFixed(2)),
+
+                quality:
+                    Number((this.processState.thermalEfficiency * 100).toFixed(2))
+
+            },
+
+            alarms
+
+        };
+
+    }
+
+    // =====================================================
+    // Process Summary
+    // =====================================================
+
+    getProcessSummary() {
+
+        return {
+
+            operatingMode:
+                this.processState.operatingMode,
+
+            productionRate:
+                Number(this.processState.productionRate.toFixed(3)),
+
+            furnaceEfficiency:
+                Number(this.processState.furnaceEfficiency.toFixed(3)),
+
+            thermalEfficiency:
+                Number(this.processState.thermalEfficiency.toFixed(3)),
+
+            combustionRate:
+                Number(this.processState.combustionRate.toFixed(3)),
+
+            coolingEfficiency:
+                Number(this.processState.coolingEfficiency.toFixed(3)),
+
+            furnaceHealth:
+                Number(this.processState.furnaceHealth.toFixed(3)),
+
+            hotMetalProduction:
+                Number(this.processState.hotMetalProduction.toFixed(2)),
+
+            slagProduction:
+                Number(this.processState.slagProduction.toFixed(2)),
+
+            topGasGeneration:
+                Number(this.processState.topGasGeneration.toFixed(2)),
+
+            cokeConsumption:
+                Number(this.processState.cokeConsumption.toFixed(2)),
+
+            energyConsumption:
+                Number(this.processState.energyConsumption.toFixed(2))
+
+        };
+
+    }
+
+    // =====================================================
+    // Main Update
+    // =====================================================
+
+    update({ context, scenario }) {
+
+        this.context = context;
+
+        this.updateProcessState(
+
+            context.plantState.operatingMode
+
+        );
+
+        switch (scenario) {
+
+            case "COOLING_FAILURE":
+
+                this.updateCoolingFailure();
+                break;
+
+            case "PRESSURE_RISE":
+
+                this.updatePressureRise();
+                break;
+
+            case "GAS_LEAK":
+
+                this.updateGasLeak();
+                break;
+
+            case "FIRE":
+
+                this.updateFire();
+                break;
+
+            default:
+
+                this.updateNormal();
+                break;
+
+        }
+
+        super.update();
+
+    }
+
+    // =====================================================
+    // JSON
+    // =====================================================
+
+    toJSON() {
+
+        return {
+
+            ...super.toJSON(),
+
+            processState: this.getProcessSummary()
+
+        };
+
+    }
+
 }
 
 module.exports = BlastFurnace;

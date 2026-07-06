@@ -1,27 +1,65 @@
-// src/config/scenarioConfig.js
+const ScenarioConfig = {
 
-module.exports = [
+    rawMaterialYard: [
 
-    "STARTUP",
+        "NORMAL",
 
-    "NORMAL",
+        "LOW_ORE",
 
-    "HIGH_PRODUCTION",
+        "CONVEYOR_FAILURE",
 
-    "LOW_PRODUCTION",
+        "HIGH_DUST"
 
-    "COOLING_FAILURE",
+    ],
 
-    "GAS_LEAK",
+    cokeOven: [
 
-    "PRESSURE_RISE",
+        "NORMAL",
 
-    "FIRE",
+        "GAS_LEAK",
 
-    "POWER_FAILURE",
+        "HEATING_FAILURE",
 
-    "MAINTENANCE",
+        "DOOR_LEAKAGE"
 
-    "SHUTDOWN"
+    ],
 
-];
+    blastFurnace: [
+
+        "NORMAL",
+
+        "COOLING_FAILURE",
+
+        "PRESSURE_RISE",
+
+        "GAS_LEAK"
+
+    ],
+
+    sms: [
+
+        "NORMAL",
+
+        "POWER_FAILURE",
+
+        "OVERHEATING",
+
+        "ELECTRODE_FAILURE"
+
+    ],
+
+    rollingMill: [
+
+        "NORMAL",
+
+        "ROLLER_FAILURE",
+
+        "HYDRAULIC_FAILURE",
+
+        "OVERLOAD"
+
+    ]
+
+};
+
+module.exports = ScenarioConfig;
